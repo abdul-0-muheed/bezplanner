@@ -1,0 +1,25 @@
+{
+  "business_info": {
+    "country": "",
+    "state": "",
+    "city": "",
+    "business_idea": "",
+    "ownership_structure": "",
+    "sales_mode": "",
+    "hire_employees": {
+      "answer": false,
+      "number_of_employees": 0,
+      "type": ""
+    },
+    "expected_annual_revenue_inr": 0,
+    "expected_annual_expenses_inr": 0,
+    "startup_capital_source": [],
+    "owner_pay_style": "",
+    "buy_assets_or_equipment": {
+      "answer": false,
+      "examples": []
+    },
+    "sell_internationally": false,
+    "tax_priority": []
+  }
+}

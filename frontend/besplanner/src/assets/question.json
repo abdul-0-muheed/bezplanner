@@ -1,0 +1,185 @@
+
+{
+  "pages": [
+    {
+      "id": "page1",
+      "title": "Business Location",
+      "description": "Let's start with where your business will be located",
+      "questions": [
+        {
+          "id": "country",
+          "label": "In which country will your business operate?",
+          "type": "text",
+          "required": true,
+          "jsonPath": "business_info.country"
+        },
+        {
+          "id": "state",
+          "label": "In which state/province?",
+          "type": "text",
+          "required": true,
+          "jsonPath": "business_info.state"
+        },
+        {
+          "id": "city",
+          "label": "In which city?",
+          "type": "text",
+          "required": true,
+          "jsonPath": "business_info.city"
+        }
+      ]
+    },
+    {
+      "id": "page2",
+      "title": "Business Basics",
+      "description": "Tell us about your business idea",
+      "questions": [
+        {
+          "id": "business_idea",
+          "label": "Describe your business idea briefly",
+          "type": "textarea",
+          "required": true,
+          "jsonPath": "business_info.business_idea"
+        },
+        {
+          "id": "ownership_structure",
+          "label": "What ownership structure will your business have?",
+          "type": "select",
+          "options": ["Sole Proprietorship", "Partnership", "LLC"],
+          "required": true,
+          "jsonPath": "business_info.ownership_structure"
+        },
+        {
+          "id": "sales_mode",
+          "label": "How will you sell your products or services?",
+          "type": "select",
+          "options": ["Physical", "Online", "Both"],
+          "required": true,
+          "jsonPath": "business_info.sales_mode"
+        }
+      ]
+    },
+    {
+      "id": "page3",
+      "title": "Employee Information",
+      "description": "Tell us about your hiring plans",
+      "questions": [
+        {
+          "id": "hire_employees_answer",
+          "label": "Do you plan to hire employees?",
+          "type": "boolean",
+          "required": true,
+          "jsonPath": "business_info.hire_employees.answer"
+        },
+        {
+          "id": "number_of_employees",
+          "label": "How many employees do you plan to hire?",
+          "type": "number",
+          "required": true,
+          "dependsOn": {
+            "question": "hire_employees_answer",
+            "value": true
+          },
+          "jsonPath": "business_info.hire_employees.number_of_employees"
+        },
+        {
+          "id": "employee_type",
+          "label": "What type of employees do you plan to hire?",
+          "type": "select",
+          "options": ["Full-time", "Part-time"],
+          "required": true,
+          "dependsOn": {
+            "question": "hire_employees_answer",
+            "value": true
+          },
+          "jsonPath": "business_info.hire_employees.type"
+        }
+      ]
+    },
+    {
+      "id": "page4",
+      "title": "Financial Information",
+      "description": "Let's understand your financial projections",
+      "questions": [
+        {
+          "id": "expected_annual_revenue",
+          "label": "What is your expected annual revenue (in INR)?",
+          "type": "number",
+          "required": true,
+          "jsonPath": "business_info.expected_annual_revenue_inr"
+        },
+        {
+          "id": "expected_annual_expenses",
+          "label": "What are your expected annual expenses (in INR)?",
+          "type": "number",
+          "required": true,
+          "jsonPath": "business_info.expected_annual_expenses_inr"
+        },
+        {
+          "id": "startup_capital_source",
+          "label": "What are your sources of startup capital?",
+          "type": "multiselect",
+          "options": ["Own Savings", "Bank Loan", "Friends & Family", "Investors", "Crowdfunding"],
+          "required": true,
+          "jsonPath": "business_info.startup_capital_source"
+        },
+        {
+          "id": "owner_pay_style",
+          "label": "How do you plan to pay yourself as an owner?",
+          "type": "select",
+          "options": ["Withdraw anytime", "Fixed salary", "Reinvest profits"],
+          "required": true,
+          "jsonPath": "business_info.owner_pay_style"
+        }
+      ]
+    },
+    {
+      "id": "page5",
+      "title": "Assets & Equipment",
+      "description": "Tell us about your asset requirements",
+      "questions": [
+        {
+          "id": "buy_assets_answer",
+          "label": "Do you need to buy assets or equipment for your business?",
+          "type": "boolean",
+          "required": true,
+          "jsonPath": "business_info.buy_assets_or_equipment.answer"
+        },
+        {
+          "id": "asset_examples",
+          "label": "What assets or equipment do you need to purchase?",
+          "type": "multiselect",
+          "options": ["Computers", "Furniture", "Vehicles", "Machinery", "Office Equipment", "POS system", "Other"],
+          "dependsOn": {
+            "question": "buy_assets_answer",
+            "value": true
+          },
+          "required": true,
+          "jsonPath": "business_info.buy_assets_or_equipment.examples"
+        }
+      ]
+    },
+    {
+      "id": "page6",
+      "title": "Additional Business Details",
+      "description": "Finally, a few more questions about your business",
+      "questions": [
+        {
+          "id": "sell_internationally",
+          "label": "Do you plan to sell products or services internationally?",
+          "type": "boolean",
+          "required": true,
+          "jsonPath": "business_info.sell_internationally"
+        },
+        {
+          "id": "tax_priority",
+          "label": "What are your tax priorities?",
+          "type": "multiselect",
+          "options": ["Save tax", "Full legal safety", "Simple filings", "Maximize deductions"],
+          "required": true,
+          "jsonPath": "business_info.tax_priority"
+        }
+      ]
+    }
+  ]
+}

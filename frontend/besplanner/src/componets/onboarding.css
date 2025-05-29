@@ -1,0 +1,208 @@
+/* Container Styles */
+.onboarding-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+/* Header Styles */
+.onboarding-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px 0;
+}
+
+.onboarding-header h1 {
+    color: #333;
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.onboarding-header p {
+    color: #666;
+    font-size: 16px;
+}
+
+/* Progress Bar Styles */
+.onboarding-content {
+    position: relative;
+    padding: 20px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    margin-bottom: 30px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #45a049);
+    transition: width 0.3s ease;
+    border-radius: 4px;
+}
+
+/* Question Section Styles */
+.onboarding-question-section {
+    margin-bottom: 24px;
+}
+
+.onboarding-question-section label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+/* Input Styles */
+.onboarding-question-section input,
+.onboarding-question-section select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+}
+
+.onboarding-question-section input:focus,
+.onboarding-question-section select:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+}
+
+/* Button Section Styles */
+.onboarding-button-section {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.onboarding-button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.onboarding-button:first-child {
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+.onboarding-button:last-child {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.onboarding-button:hover {
+    transform: translateY(-1px);
+}
+
+.onboarding-button:disabled {
+    background-color: #e9ecef;
+    color: #999;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Required Field Indicator */
+.required-mark {
+    color: #dc3545;
+    margin-left: 4px;
+}
+
+/* Tag Input Styles */
+.tag-input-container {
+    border: 1px solid #ddd;
+    padding: 8px;
+    border-radius: 4px;
+    min-height: 44px;
+    background-color: #fff;
+    overflow: hidden;
+}
+
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.tag {
+    background-color: #e9ecef;
+    border-radius: 4px;
+    padding: 4px 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+}
+
+.tag-remove {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 4px;
+}
+
+.tag-remove:hover {
+    color: #dc3545;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .onboarding-container {
+        padding: 15px;
+        margin: 10px;
+    }
+
+    .onboarding-button-section {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .onboarding-button {
+        width: 100%;
+    }
+}
+
+.loading-screen {
+  position: fixed; /* Important for overlay effect */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent overlay */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Ensure it's on top */
+}
+
+.loading-screen .spinner {
+    border: 5px solid #f3f3f3; /* Light gray */
+    border-top: 5px solid #3498db; /* Blue */
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
