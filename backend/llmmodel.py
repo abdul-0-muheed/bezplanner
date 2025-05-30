@@ -7,14 +7,22 @@ from webdetails import extract_from_url
 from dbmodel import WebData,db,TaxPlan
 load_dotenv()
 
-#setting the api 
-api_key= os.getenv("api_key")
-genai.configure(api_key=api_key)
-model = genai.GenerativeModel(os.getenv("model_name"))
+# #setting the api 
+# api_key= os.getenv("api_key")
+# genai.configure(api_key=api_key)
+# model = genai.GenerativeModel(os.getenv("model_name"))
 
 def llm_response(prompt):
+    import os
+    import google.generativeai as genai
+    from dotenv import load_dotenv
+    load_dotenv()
+    api_key = os.getenv("api_key")
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel(os.getenv("model_name"))
     response = model.generate_content(prompt)
     return response.text
+
 
 def clean_json_response(response_text):
     """
@@ -85,25 +93,22 @@ def tax_minimalization(business_data,uids):
         print("Error: 'id' key not found or not an integer in business_data")
         return None
     existing_web_data = WebData.query.filter_by(business_id=business_id,supabase_uid=uids).first()
-    if len(existing_web_data.web_data)<=0:
-        
-        data = seach_quearymaker(business_data)
-        for query_data in data["queries"]:  #Use a more descriptive variable name
-            results = search(query_data) #results now contains a list of links
-            links = results.get("link", []) #Get list of links, default to empty list
-            for url in links: #Iterate through each link in the list
-                if url:
-                    extracted_data = extract_from_url(url)
-                    if extracted_data:
-                        webdata.append(extracted_data)
-
+    if not existing_web_data:
         try:
-            existing_web_data = WebData.query.filter_by(business_id=business_id).first()
-            
-            db.session.begin()  # Start a database transaction
-            if existing_web_data:
-                print(webdata)
-            else:    
+            data = seach_quearymaker(business_data)
+            for query_data in data["queries"]:  #Use a more descriptive variable name
+                results = search(query_data) #results now contains a list of links
+                links = results.get("link", []) #Get list of links, default to empty list
+                for url in links: #Iterate through each link in the list
+                    if url:
+                        extracted_data = extract_from_url(url)
+                        if extracted_data:
+                            webdata.append(extracted_data)
+        except Exception as e:
+            print(f"Error during web scraping or extraction: {e}")
+            return None
+        try:
+            if webdata:     
                 dataset = WebData(
                     business_id=business_id,
                     web_data=json.dumps(webdata),
@@ -112,60 +117,68 @@ def tax_minimalization(business_data,uids):
                 db.session.add(dataset)
                 db.session.commit()  # Commit the transaction if successful
                 print(webdata)
+            else:
+                print("No webdata extracted, skipping DB insert.")    
+               
         except Exception as e:  # Catch any database errors
             db.session.rollback()  # Rollback the transaction if an error occurred
             print(f"Database error: {e}")
             db.session.close()
             return None  #Return None to indicate failure
         #finally:
-    else:    
+    else:
+        # Use existing web data
         try:
-            prompt=f"""You are a legal and tax expert assistant. Based on the following business details and the provided web data, give a list of practical tax minimization strategies in simple bullet points.  Use information from your internal knowledge base supplemented by the web data for the most up-to-date information. Do not include any headings, descriptions, or titles. Only return the plan points in JSON format.
-
-            Business Information:
-            {business_data}
-
-            Web Data:
-            {webdata}
-
-            Output Style:
-            - JSON format:  A JSON array of bullet points.  Each bullet point should be a string.
-            - Use plain English
-            - No grouping or explanations
-
-            Example JSON Output:
-            ```json
-            {{"taxplan":[
-            "Deduct business expenses.",
-            "Maximize retirement contributions.",
-            "Explore tax credits for your industry.",
-            // ... more bullet points}}
-            """
-            taxset=llm_response(prompt)
-            res=clean_json_response(taxset)
-            try:
-                taxplan = json.loads(res)["taxplan"]  # Extract taxplan from JSON response
-                existing_tax_plan = TaxPlan.query.filter_by(business_id=business_id).first()
-                
-                # Insert tax plan into database
-                if existing_tax_plan:
-                    return taxplan
-                else:
-                    new_tax_plan = TaxPlan(
-                        supabase_uid=uids,
-                        business_id=business_id,
-                        tax_plan=json.dumps(taxplan)  # Store as JSON string
-                    )
-                    db.session.add(new_tax_plan)
-                    db.session.commit()
-                    return taxplan #return taxplan data
-            except (KeyError, json.JSONDecodeError) as e:
-                print(f"Error parsing LLM response or key error: {e}")
-                return None  # Return None if JSON parsing fails
+            webdata = json.loads(existing_web_data.web_data)
+        except Exception as e:
+            print(f"Error loading existing web data: {e}")
+            return None    
+    try:
+        prompt=f"""You are a legal and tax expert assistant. Based on the following business details and the provided web data, give a list of practical tax minimization strategies in simple bullet points.  Use information from your internal knowledge base supplemented by the web data for the most up-to-date information. Do not include any headings, descriptions, or titles.  Return the plan points in JSON format starting with `{{"taxplan": [` and ending with `}}`.
+     
+        Business Information:
+        {business_data}
+        Web Data:
+        {webdata}
+        Example JSON Output:
+        {{"taxplan":[
+        "idea1",
+        "idea2",
+        "idea3",
+        // ... more bullet points]}}
+        """
+        taxset=llm_response(prompt)
+        print(taxset,"**********")
+        res=clean_json_response(taxset)
+        try:
+            print(res)
+            taxplan = json.loads(res)["taxplan"]  # Extract taxplan from JSON response
+        except (KeyError, json.JSONDecodeError) as e:
+            print(f"Error parsing LLM response or key error: {e}")
+            return None   
+        try:    
+            existing_tax_plan = TaxPlan.query.filter_by(business_id=business_id).first()
+            
+            # Insert tax plan into database
+            if existing_tax_plan:
+                return taxplan
+            else:
+                new_tax_plan = TaxPlan(
+                    supabase_uid=uids,
+                    business_id=business_id,
+                    tax_plan=json.dumps(taxplan)  # Store as JSON string
+                )
+                db.session.add(new_tax_plan)
+                db.session.commit()
+                return taxplan #return taxplan data
         except Exception as e:
             db.session.rollback()
             print(f"Database error or other error: {e}")
-            return None  # Return None on database error
+            db.session.close()
+            return None
+    except Exception as e:
+        print(f"LLM or tax plan generation error: {e}")
+        return None
 
 def business_guild(business,tax_plan,id):
     try:
