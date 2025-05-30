@@ -7,22 +7,14 @@ from webdetails import extract_from_url
 from dbmodel import WebData,db,TaxPlan
 load_dotenv()
 
-# #setting the api 
-# api_key= os.getenv("api_key")
-# genai.configure(api_key=api_key)
-# model = genai.GenerativeModel(os.getenv("model_name"))
+#setting the api 
+api_key= os.getenv("api_key")
+genai.configure(api_key=api_key)
+model = genai.GenerativeModel(os.getenv("model_name"))
 
 def llm_response(prompt):
-    import os
-    import google.generativeai as genai
-    from dotenv import load_dotenv
-    load_dotenv()
-    api_key = os.getenv("api_key")
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(os.getenv("model_name"))
     response = model.generate_content(prompt)
     return response.text
-
 
 def clean_json_response(response_text):
     """
@@ -79,6 +71,7 @@ def seach_quearymaker(business_data):
     
     response = llm_response(prompt)
     res=clean_json_response(response)
+    print(f"Response from LLM before JSON decoding: {res}") # Add this line
     data = json.loads(res)
     
     return data
@@ -108,7 +101,8 @@ def tax_minimalization(business_data,uids):
             print(f"Error during web scraping or extraction: {e}")
             return None
         try:
-            if webdata:     
+            if webdata:
+             # db.session.begin()  # Start a database transaction
                 dataset = WebData(
                     business_id=business_id,
                     web_data=json.dumps(webdata),
@@ -119,7 +113,7 @@ def tax_minimalization(business_data,uids):
                 print(webdata)
             else:
                 print("No webdata extracted, skipping DB insert.")    
-               
+                   
         except Exception as e:  # Catch any database errors
             db.session.rollback()  # Rollback the transaction if an error occurred
             print(f"Database error: {e}")
@@ -127,12 +121,11 @@ def tax_minimalization(business_data,uids):
             return None  #Return None to indicate failure
         #finally:
     else:
-        # Use existing web data
         try:
-            webdata = json.loads(existing_web_data.web_data)
+            webdata = json.loads(existing_web_data.web_data) 
         except Exception as e:
             print(f"Error loading existing web data: {e}")
-            return None    
+            return None        
     try:
         prompt=f"""You are a legal and tax expert assistant. Based on the following business details and the provided web data, give a list of practical tax minimization strategies in simple bullet points.  Use information from your internal knowledge base supplemented by the web data for the most up-to-date information. Do not include any headings, descriptions, or titles.  Return the plan points in JSON format starting with `{{"taxplan": [` and ending with `}}`.
      
@@ -147,7 +140,7 @@ def tax_minimalization(business_data,uids):
         "idea3",
         // ... more bullet points]}}
         """
-        taxset=llm_response(prompt)
+        taxset= llm_response(prompt)
         print(taxset,"**********")
         res=clean_json_response(taxset)
         try:

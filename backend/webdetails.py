@@ -3,28 +3,23 @@ from pdfminer.high_level import extract_text
 from urllib.parse import urlparse
 import requests
 import os
-import httpx
-import aiofiles
-import asyncio
 
 
 def is_pdf_url(url):
     return url.lower().endswith(".pdf")
     
-async def download_pdf(url, filename):
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url)
-        async with aiofiles.open(filename, "wb") as f:
-            await f.write(response.content)
+def download_pdf(url, filename):
+    response = requests.get(url)
+    with open(filename, "wb") as f:
+        f.write(response.content)
     return filename
     
 def extract_text_from_pdf(pdf_path):
     return extract_text(pdf_path)
     
-async def extract_text_from_web(url):
+def extract_text_from_web(url):
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url)
+        response = requests.get(url)
         soup = BeautifulSoup(response.text, 'html.parser')
             
             # Remove unwanted elements
@@ -64,18 +59,17 @@ async def extract_text_from_web(url):
         print(f"Error extracting text from web: {e}")
         return None
 
-async def extract_from_url(url):
+def extract_from_url(url):
     try:
         print(f"Processing: {url}")
         if is_pdf_url(url):
             filename = os.path.basename(urlparse(url).path)
-            pdf_path = await download_pdf(url, filename)
-            loop = asyncio.get_event_loop()
-            text = await loop.run_in_executor(None, extract_text_from_pdf, pdf_path)
+            pdf_path = download_pdf(url, filename)
+            text = extract_text_from_pdf(pdf_path)
             os.remove(pdf_path)
             return text
         else:
-            return await extract_text_from_web(url)
+            return extract_text_from_web(url)
     except Exception as e:
         print(f"Failed to process {url}: {e}")
         return None

@@ -7,16 +7,16 @@ import os
 from dotenv import load_dotenv
 import json
 from flask_cors import CORS
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
-from tasks import celery_app, tax_minimalization_task
-from celery.result import AsyncResult
+# from werkzeug.serving import WSGIServer
+from gevent.pywsgi import WSGIServer
 
 #sbp_fdb6493e30c875d8b70bf199eb82931eaf6568dd  supabase
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-llm_executor = ProcessPoolExecutor(max_workers=32)    # Handle concurrent requests
+executor = ThreadPoolExecutor(max_workers=1000)  # Handle concurrent requests
 
 
 load_dotenv()
@@ -31,10 +31,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] =os.getenv("DATABASE_URL")
 db.init_app(app)
 
 
-def tax_minimalization_worker(business_data, uid):
-    with app.app_context():
-        from llmmodel import tax_minimalization
-        return tax_minimalization(business_data, uid)
+
+
 
 @app.route("/")
 def home():
@@ -83,18 +81,14 @@ def add_business(uids,no):
 
 @app.route("/tax_minimalization/<string:uid>/<string:no>", methods=["GET"])
 def tax_plan(uid, no):
-    business = Business.query.filter_by(uid=uid, no_business=no).first()
+    business = Business.query.filter_by(uid=uid,no_business=no).first()
     if business:
         business_data = business.to_dict()
-        future = llm_executor.submit(tax_minimalization_worker, business_data, uid)
-        try:
-            tax_plan = future.result()
-            if tax_plan:
-                return jsonify(tax_plan), 200
-            else:
-                return jsonify({"error": "Error generating tax plan"}), 500
-        except Exception as e:
-            return jsonify({"error": f"LLM processing error: {e}"}), 500
+        tax_plan = tax_minimalization(business_data, uid)  # Pass uid to llmmodel
+        if tax_plan:
+            return jsonify(tax_plan), 200  # Return tax plan as JSON
+        else:
+            return jsonify({"error": "Error generating tax plan"}), 500
     else:
         return jsonify({"error": "Business not found"}), 404
     
@@ -244,5 +238,5 @@ def  getoptionalbrandingipdocuments(uid,id):
 
 if __name__ == "__main__":
     init_db(app)
-    app.run(debug=True, host='127.0.0.1', port=int(os.getenv("PORT",5000)))
-
+    http_server = WSGIServer(('0.0.0.0', 8000), app)
+    http_server.serve_forever()
