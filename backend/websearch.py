@@ -1,12 +1,13 @@
-import requests
+import httpx
 from bs4 import BeautifulSoup
 
-def search(query):
+async def search(query):
     url = "https://html.duckduckgo.com/html/"
     headers = {'User-Agent': 'Mozilla/5.0'}
     data = {'q': query}
     
-    response = requests.post(url, headers=headers, data=data)
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, headers=headers, data=data)
     soup = BeautifulSoup(response.text, 'html.parser')
 
     results = []
