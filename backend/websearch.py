@@ -10,7 +10,7 @@ def search(query):
     soup = BeautifulSoup(response.text, 'html.parser')
 
     results = []
-    for result in soup.find_all('a', {'class': 'result__a'}, limit=10):
+    for result in soup.find_all('a', {'class': 'result__a'}, limit=3):
         title = result.get_text()
         link = result['href']
         snippet_tag = result.find_parent('div', class_='result__body')
@@ -21,7 +21,8 @@ def search(query):
             'snippet': snippet
         })
     if results:
-        links = [result.get("link", "") for result in results]  #Safely extract link if it exists
+        links = [result.get("link", "") for result in results] 
+        # print(links) #Safely extract link if it exists
         return {"link": links}
     else:
         return {"link": []}

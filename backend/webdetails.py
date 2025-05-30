@@ -3,6 +3,10 @@ from pdfminer.high_level import extract_text
 from urllib.parse import urlparse
 import requests
 import os
+import multiprocessing
+from concurrent.futures import ThreadPoolExecutor
+import logging
+from functools import partial
 
 
 def is_pdf_url(url):
@@ -59,7 +63,7 @@ def extract_text_from_web(url):
         print(f"Error extracting text from web: {e}")
         return None
 
-def extract_from_url(url):
+def process_url(url):
     try:
         print(f"Processing: {url}")
         if is_pdf_url(url):
@@ -74,4 +78,35 @@ def extract_from_url(url):
         print(f"Failed to process {url}: {e}")
         return None
     
-  
+def extract_from_url(urls):
+    #add a quaue
+    # Configure logging
+    logging.basicConfig(level=logging.INFO,
+                       format='%(asctime)s - %(levelname)s - %(message)s')
+    # Handle single URL input
+    if isinstance(urls, str):
+        urls = [urls]
+
+    if not urls:
+        return []
+
+    # Configure parallel processing parameters
+    cpu_count = multiprocessing.cpu_count()
+    max_processes = min(1000, len(urls))
+    chunk_size = max(1, len(urls) // (cpu_count * 4))    
+
+    try:
+        with multiprocessing.Pool(processes=min(cpu_count * 2, max_processes)) as process_pool:
+            with ThreadPoolExecutor(max_workers=max_processes) as thread_pool:
+                # Process URLs in parallel
+                results = list(process_pool.imap_unordered(
+                    process_url,
+                    urls,
+                    chunksize=chunk_size
+                ))
+                
+                return [r for r in results if r is not None]
+                
+    except Exception as e:
+        logging.error(f"Parallel processing failed: {e}")
+        return []

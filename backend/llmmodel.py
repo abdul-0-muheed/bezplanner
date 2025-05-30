@@ -89,14 +89,21 @@ def tax_minimalization(business_data,uids):
     if not existing_web_data:
         try:
             data = seach_quearymaker(business_data)
+            linkss=[]
+            count=0
             for query_data in data["queries"]:  #Use a more descriptive variable name
                 results = search(query_data) #results now contains a list of links
                 links = results.get("link", []) #Get list of links, default to empty list
-                for url in links: #Iterate through each link in the list
-                    if url:
-                        extracted_data = extract_from_url(url)
-                        if extracted_data:
-                            webdata.append(extracted_data)
+                count+=1
+                for link in links:
+                    linkss.append(link)
+                print(len(linkss))
+                # for url in links: #Iterate through each link in the list
+                if count>9:
+                    print(linkss)
+                    extracted_data = extract_from_url(linkss)
+                    if extracted_data:
+                        webdata.append(extracted_data)
         except Exception as e:
             print(f"Error during web scraping or extraction: {e}")
             return None
