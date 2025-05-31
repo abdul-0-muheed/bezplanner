@@ -4,40 +4,48 @@ from dotenv import load_dotenv
 import json
 from websearch import search
 from webdetails import extract_from_url
-from dbmodel import WebData,db,TaxPlan
+from dbmodel import WebData, TaxPlan,BusinessProgress,Business
+from database import get_db
+from database import SessionLocal
+import asyncio
+from fastapi import FastAPI, HTTPException
+from sqlalchemy.orm import Session
 load_dotenv()
+
+db = SessionLocal()
 
 #setting the api 
 api_key= os.getenv("api_key")
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel(os.getenv("model_name"))
 
-def llm_response(prompt):
-    response = model.generate_content(prompt)
-    return response.text
+async def llm_response(prompt: str): # updated to accept prompt as a request body
+    try:
+        response = model.generate_content(prompt) # Use await for async operation
+        return response.text  # Return response as a dictionary
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating response: {e}")
 
 def clean_json_response(response_text):
     """
     Removes markdown formatting from JSON responses.
     Specifically targets the ```json and ``` markers.
     """
-    # Check if response starts with ```json or similar markdown indicator
-    if response_text.strip().startswith("```"):
-        # Find the first { which indicates the start of actual JSON
-        json_start = response_text.find("{")
-        if json_start != -1:
-            # Find the last } which indicates the end of JSON
+    try:
+        if isinstance(response_text, dict):  # Check if it's already a dict
+            return response_text
+        if response_text.strip().startswith("```"):
+            json_start = response_text.find("{")
             json_end = response_text.rfind("}")
-            if json_end != -1:
-                # Extract just the JSON part
-                return response_text[json_start:json_end+1]
-    
-    # If no markdown formatting detected or couldn't parse properly,
-    # return the original text
-    return response_text
+            if json_start != -1 and json_end != -1:
+                response_text = response_text[json_start:json_end+1]
+        return json.loads(response_text)  # Ensure it's parsed as JSON
+    except Exception as e:
+        print(f"Error cleaning JSON response: {e}")
+        return {}
 
 
-def seach_quearymaker(business_data):
+async def seach_quearymaker(business_data):
     prompt = f"""
     As a business and tax expert, generate 10 specific search queries to find information about tax minimization, 
     legal requirements, and documentation for the following business:
@@ -69,173 +77,220 @@ def seach_quearymaker(business_data):
     Ensure your response is valid JSON that can be parsed programmatically.
     """
     
-    response = llm_response(prompt)
+    response = await llm_response(prompt) # Use await for asynchronous call
     res=clean_json_response(response)
-    print(f"Response from LLM before JSON decoding: {res}") # Add this line
-    data = json.loads(res)
-    
-    return data
+    print(f"Response from LLM before JSON decoding: {res}")
+    try:
+        queries = json.loads(res) if isinstance(res, str) else res  # Ensure valid JSON
+        print(queries["queries"])
+        return queries["queries"]
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Invalid JSON response from LLM: {e}") # Handle JSON decoding errors
 
     
 
-def tax_minimalization(business_data,uids):
+async def tax_minimalization(business_data, uids):
+    """
+    Generates a tax minimization plan using LLM and web data.
+
+    Args:
+        business_data (dict): Business information.
+        uids (str): Supabase user ID.
+
+    Returns:
+        list: Tax minimization strategies, or None if an error occurs.
+    """
     webdata = []
     try:
-        business_id = int(business_data["id"])
+        business_id = int(business_data["id"]) # Extract business ID from input data
     except (KeyError, ValueError):
         print("Error: 'id' key not found or not an integer in business_data")
-        return None
-    existing_web_data = WebData.query.filter_by(business_id=business_id,supabase_uid=uids).first()
+        return None # Return None if ID is invalid
+
+    db=await get_db() #Use async context manager for database interaction
+    existing_web_data = db.execute( #Use async db operations
+        WebData.__table__.select().where(WebData.business_id == business_id, WebData.supabase_uid == uids)
+    ).first()
     if not existing_web_data:
         try:
-            data = seach_quearymaker(business_data)
-            linkss=[]
-            count=0
-            for query_data in data["queries"]:  #Use a more descriptive variable name
-                results = search(query_data) #results now contains a list of links
-                links = results.get("link", []) #Get list of links, default to empty list
-                count+=1
-                for link in links:
-                    linkss.append(link)
+            try:    
+                data =  await seach_quearymaker(business_data) # Assuming this function is defined elsewhere and handles asynchronous operations appropriately.
+            
+            except Exception as e:
+                print(f"search: {e}")
+                return None
+
+            linkss = []
+            count = 0
+            for query_data in data:
+                results = await search(query_data) # Await the search function which should be asynchronous
+                if not isinstance(results, dict):
+                    print(f"Error: Invalid results structure for query '{query_data}'. Expected a dictionary.")
+                    continue
                 print(len(linkss))
-                # for url in links: #Iterate through each link in the list
-                if count>9:
-                    print(linkss)
-                    extracted_data = extract_from_url(linkss)
+                links = results.get("link", [])
+                if not isinstance(links, list):
+                    print(f"Error: 'link' is not a list in results for query '{query_data}'.")
+                    continue
+                count += 1
+                linkss.extend(links) #Use extend to add all links from the list
+                if count > 9:
+                    extracted_data = await extract_from_url(linkss) #Use await for asynchronous extraction
                     if extracted_data:
                         webdata.append(extracted_data)
+                    break  #Exit loop after processing a sufficient number of links
         except Exception as e:
             print(f"Error during web scraping or extraction: {e}")
             return None
+
         try:
             if webdata:
-             # db.session.begin()  # Start a database transaction
                 dataset = WebData(
                     business_id=business_id,
                     web_data=json.dumps(webdata),
                     supabase_uid=uids
                 )
-                db.session.add(dataset)
-                db.session.commit()  # Commit the transaction if successful
+                db.add(dataset) # Add using the database session object
+                db.commit() # Flush changes to the database
                 print(webdata)
             else:
-                print("No webdata extracted, skipping DB insert.")    
-                   
-        except Exception as e:  # Catch any database errors
-            db.session.rollback()  # Rollback the transaction if an error occurred
+                print("No webdata extracted, skipping DB insert.")
+        except Exception as e:
+            db.rollback()
             print(f"Database error: {e}")
-            db.session.close()
-            return None  #Return None to indicate failure
-        #finally:
+            return None
+
     else:
         try:
-            webdata = json.loads(existing_web_data.web_data) 
+            webdata = json.loads(existing_web_data.web_data)
         except Exception as e:
             print(f"Error loading existing web data: {e}")
-            return None        
+            return None
+
     try:
-        prompt=f"""You are a legal and tax expert assistant. Based on the following business details and the provided web data, give a list of practical tax minimization strategies in simple bullet points.  Use information from your internal knowledge base supplemented by the web data for the most up-to-date information. Do not include any headings, descriptions, or titles.  Return the plan points in JSON format starting with `{{"taxplan": [` and ending with `}}`.
-     
-        Business Information:
-        {business_data}
-        Web Data:
-        {webdata}
-        Example JSON Output:
-        {{"taxplan":[
-        "idea1",
-        "idea2",
-        "idea3",
-        // ... more bullet points]}}
-        """
-        taxset= llm_response(prompt)
-        print(taxset,"**********")
-        res=clean_json_response(taxset)
+        prompt = f"""You are a legal and tax expert assistant. Based on the following business details and the provided web data, give a list of practical tax minimization strategies in simple bullet points.  Use information from your internal knowledge base supplemented by the web data for the most up-to-date information. Do not include any headings, descriptions, or titles.  Return the plan points in JSON format starting with `{{"taxplan": [` and ending with `}}`.
+
+            Business Information:
+            {business_data}
+            Web Data:
+            {webdata}
+            Example JSON Output:
+            {{"taxplan":[
+            "idea1",
+            "idea2",
+            "idea3",
+            // ... more bullet points]}}
+            """
+        taxset = await llm_response(prompt) #Await the LLM response
+        print(taxset, "**********")
+        res = clean_json_response(taxset) #Assuming this function is defined elsewhere
         try:
             print(res)
-            taxplan = json.loads(res)["taxplan"]  # Extract taxplan from JSON response
+            try: 
+                taxplan = res
+            except Exception as e:
+                print("helo",e)    
         except (KeyError, json.JSONDecodeError) as e:
             print(f"Error parsing LLM response or key error: {e}")
-            return None   
-        try:    
-            existing_tax_plan = TaxPlan.query.filter_by(business_id=business_id).first()
-            
-            # Insert tax plan into database
+            return None
+
+        try:
+            try:
+                # Use async execution for the query
+                result = db.execute(
+                    TaxPlan.__table__.select().where(TaxPlan.business_id == business_id)
+                )
+                existing_tax_plan = result.fetchone()  # Fetch the first row synchronously
+            except Exception as e:
+                print("higuys",e)
             if existing_tax_plan:
                 return taxplan
             else:
                 new_tax_plan = TaxPlan(
                     supabase_uid=uids,
                     business_id=business_id,
-                    tax_plan=json.dumps(taxplan)  # Store as JSON string
+                    tax_plan=json.dumps(taxplan)
                 )
-                db.session.add(new_tax_plan)
-                db.session.commit()
-                return taxplan #return taxplan data
+                db.add(new_tax_plan) #Add the new tax plan
+                db.commit() #Commit changes asynchronously
+                return taxplan
         except Exception as e:
-            db.session.rollback()
+            db.rollback()
             print(f"Database error or other error: {e}")
-            db.session.close()
             return None
     except Exception as e:
         print(f"LLM or tax plan generation error: {e}")
         return None
 
-def business_guild(business,tax_plan,id):
+async def business_guild(business,tax_plan,id):
     try:
-        webdata_obj = WebData.query.filter_by(business_id=id).first()
-        if webdata_obj is None:
-            return {"error": f"No web data found for business_id: {id}"}
+            db= await get_db()
+            business_progress =db.query(BusinessProgress).filter_by(business_id=id).first()
+            if business_progress:
+                business_progress=business_progress.to_dict()
+                print(business_progress["progress_text"])
+                return business_progress["progress_text"]
+            
+            else:
+                print("trying")
+                webdata_obj = db.query(WebData).filter_by(business_id=id).first() # Corrected query
+                
+                if not webdata_obj:
+                    return {"error": f"No web data found for business_id: {id}"}
+                    
+                
+                webdata = webdata_obj.to_dict()
 
-        webdata = webdata_obj.web_data
-        prompt = f"""Generate a list of documents and the process to create them for starting a {business} business. Use real-time data from the following source: {webdata}, supplementing this with your internal knowledge base for a comprehensive response. Optimize the plan to align with the following tax plan: {tax_plan}.
+                prompt = f"""Generate a list of documents and the process to create them for starting a {business} business. Use real-time data from the following source: {webdata}, supplementing this with your internal knowledge base for a comprehensive response. Optimize the plan to align with the following tax plan: {tax_plan}.
 
-        The response should be in the following JSON format:
-        ```json
-        {{
-          "businessstructure": {{
-              "documents": [
-              {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
-              ]
-          }},
-          "legal compliance &licensing documents": {{
-              "documents": [
-              {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
-              ]
-          }},
-          "tax & finance documents": {{
-              "documents": [
-              {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
-              ]
-          }},
-          "employee related documents(if hiring)": {{
-              "documents": [
-              {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
-              ]
-          }},
-          "optional branding/ip documents": {{
-              "documents": [
-              {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
-              ]
-          }}
-        }}
-        ```
+                The response should be in the following JSON format:
+                ```json
+                {{
+                "businessstructure": {{
+                    "documents": [
+                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
+                    ]
+                }},
+                "legal compliance &licensing documents": {{
+                    "documents": [
+                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
+                    ]
+                }},
+                "tax & finance documents": {{
+                    "documents": [
+                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
+                    ]
+                }},
+                "employee related documents(if hiring)": {{
+                    "documents": [
+                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
+                    ]
+                }},
+                "optional branding/ip documents": {{
+                    "documents": [
+                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
+                    ]
+                }}
+                }}
+                ```
 
-        Each document should include:
+                Each document should include:
 
-        1. The document title.
-        2. A clear and concise description of the process to create the document, including how to do it, where to submit it, and the relevant URL for submission.
-        3. No extra summaries—just the title and process description. Use plain English and avoid jargon.
+                1. The document title.
+                2. A clear and concise description of the process to create the document, including how to do it, where to submit it, and the relevant URL for submission.
+                3. No extra summaries—just the title and process description. Use plain English and avoid jargon.
 
-        Please ensure the process description is concise and provides clear instructions. Prioritize information found in the provided web data for real-time accuracy, supplementing this with your internal knowledge base where necessary. Align the documents and processes with the tax plan specified in {tax_plan}.
-        """
-
-        response = llm_response(prompt)
-        res = clean_json_response(response)
-        try:
-            data = json.loads(res)
-            return data
-        except json.JSONDecodeError as e:
-            return {"error": f"Error decoding JSON response from LLM: {e}"}
+                Please ensure the process description is concise and provides clear instructions. Prioritize information found in the provided web data for real-time accuracy, supplementing this with your internal knowledge base where necessary. Align the documents and processes with the tax plan specified in {tax_plan}.
+                """
+                # print(prompt)
+                response =await llm_response(prompt)
+                res = clean_json_response(response)
+                try:
+                    data = res
+                    print(res)
+                    return data
+                except json.JSONDecodeError as e:
+                    return {"error": f"Error decoding JSON response from LLM: {e}"}
     except Exception as e:
         return {"error": f"An unexpected error occurred: {e}"}
 

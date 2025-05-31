@@ -6,25 +6,35 @@ import os
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
 import logging
-from functools import partial
+import asyncio
+import aiohttp
 
+
+# Configure logging at the top of the file
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def is_pdf_url(url):
     return url.lower().endswith(".pdf")
     
-def download_pdf(url, filename):
-    response = requests.get(url)
-    with open(filename, "wb") as f:
-        f.write(response.content)
+async def download_pdf(url, filename):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            with open(filename, "wb") as f:
+                f.write(await response.read())
     return filename
     
-def extract_text_from_pdf(pdf_path):
-    return extract_text(pdf_path)
+async def extract_text_from_pdf(pdf_path):
+    loop = asyncio.get_running_loop()
+    with ThreadPoolExecutor() as pool:
+        text = await loop.run_in_executor(pool, extract_text, pdf_path)
+    return text
     
-def extract_text_from_web(url):
+async def extract_text_from_web(url):
     try:
-        response = requests.get(url)
-        soup = BeautifulSoup(response.text, 'html.parser')
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                text = await response.text()
+                soup = BeautifulSoup(text, 'html.parser')
             
             # Remove unwanted elements
         for element in soup.find_all(['nav', 'header', 'footer', 'script', 'style']):
@@ -63,22 +73,22 @@ def extract_text_from_web(url):
         print(f"Error extracting text from web: {e}")
         return None
 
-def process_url(url):
+async def process_url(url):
     try:
         print(f"Processing: {url}")
         if is_pdf_url(url):
             filename = os.path.basename(urlparse(url).path)
-            pdf_path = download_pdf(url, filename)
-            text = extract_text_from_pdf(pdf_path)
+            pdf_path = await download_pdf(url, filename)
+            text = await extract_text_from_pdf(pdf_path)
             os.remove(pdf_path)
             return text
         else:
-            return extract_text_from_web(url)
+            return await extract_text_from_web(url)
     except Exception as e:
         print(f"Failed to process {url}: {e}")
         return None
     
-def extract_from_url(urls):
+async def extract_from_url(urls):
     #add a quaue
     # Configure logging
     logging.basicConfig(level=logging.INFO,
@@ -89,24 +99,28 @@ def extract_from_url(urls):
 
     if not urls:
         return []
+    
+    results = await asyncio.gather(*(process_url(url) for url in urls))
+    return [r for r in results if r is not None]
 
-    # Configure parallel processing parameters
-    cpu_count = multiprocessing.cpu_count()
-    max_processes = min(1000, len(urls))
-    chunk_size = max(1, len(urls) // (cpu_count * 4))    
+    #flask code
+    # # Configure parallel processing parameters
+    # cpu_count = multiprocessing.cpu_count()
+    # max_processes = min(1000, len(urls))
+    # chunk_size = max(1, len(urls) // (cpu_count * 4))    
 
-    try:
-        with multiprocessing.Pool(processes=min(cpu_count * 2, max_processes)) as process_pool:
-            with ThreadPoolExecutor(max_workers=max_processes) as thread_pool:
-                # Process URLs in parallel
-                results = list(process_pool.imap_unordered(
-                    process_url,
-                    urls,
-                    chunksize=chunk_size
-                ))
+    # try:
+    #     with multiprocessing.Pool(processes=min(cpu_count * 2, max_processes)) as process_pool:
+    #         with ThreadPoolExecutor(max_workers=max_processes) as thread_pool:
+    #             # Process URLs in parallel
+    #             results = list(process_pool.imap_unordered(
+    #                 process_url,
+    #                 urls,
+    #                 chunksize=chunk_size
+    #             ))
                 
-                return [r for r in results if r is not None]
+    #             return [r for r in results if r is not None]
                 
-    except Exception as e:
-        logging.error(f"Parallel processing failed: {e}")
-        return []
+    # except Exception as e:
+    #     logging.error(f"Parallel processing failed: {e}")
+    #     return []

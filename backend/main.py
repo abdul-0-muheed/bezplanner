@@ -1,46 +1,53 @@
-from flask import Flask,request,jsonify
+from fastapi import FastAPI, Request, HTTPException, status, Depends
 from llmmodel import llm_response,tax_minimalization,business_guild
 from websearch import search
 from webdetails import extract_from_url
-from dbmodel import db, Business,init_db,TaxPlan,BusinessProgress
+from dbmodel import Business,init_db,TaxPlan,BusinessProgress
 import os
 from dotenv import load_dotenv
 import json
-from flask_cors import CORS
+from fastapi.responses import JSONResponse
 from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
-# from werkzeug.serving import WSGIServer
-from gevent.pywsgi import WSGIServer
-
-#sbp_fdb6493e30c875d8b70bf199eb82931eaf6568dd  supabase
-app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
-
-executor = ThreadPoolExecutor(max_workers=1000)  # Handle concurrent requests
+from database import get_db
+from sqlalchemy.orm import Session
 
 
 load_dotenv()
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_size': 100,  # Permanent database connections
-    'max_overflow': 200,  # Additional temporary connections
-    'pool_timeout': 30,  # Seconds to wait for connection
-    'pool_recycle': 1800,  # Recycle connections after 30 minutes
-    'pool_pre_ping': True 
-}
-app.config['SQLALCHEMY_DATABASE_URI'] =os.getenv("DATABASE_URL")
-db.init_app(app)
+
+#sbp_fdb6493e30c875d8b70bf199eb82931eaf6568dd  supabase
+app = FastAPI()
+
+# executor = ThreadPoolExecutor(max_workers=1000)  # Handle concurrent requests
 
 
 
+# app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+#     'pool_size': 100,  # Permanent database connections
+#     'max_overflow': 200,  # Additional temporary connections
+#     'pool_timeout': 30,  # Seconds to wait for connection
+#     'pool_recycle': 1800,  # Recycle connections after 30 minutes
+#     'pool_pre_ping': True 
+# }
+# app.config['SQLALCHEMY_DATABASE_URI'] =os.getenv("DATABASE_URL")
+# db.init_app(app)
+init_db()
+
+@app.on_event("startup")
+async def startup_event():
+    # Database is already initialized, no need for await init_db() here
+    print("FastAPI app started!")  # Add a print statement to confirm
+    pass #remove  await init_db()
 
 
-@app.route("/")
-def home():
+@app.get("/")
+async def home():
     return "backend is running"
 
-@app.route("/businnesdata/<string:uids>/<string:no>", methods=["POST"])
-def add_business(uids,no):
-    data = request.get_json()
+@app.post("/businnesdata/{uids}/{no}")
+async def add_business(uids: str, no: str, data: Request, db: Session = Depends(get_db)):
+    # Assuming data is in JSON format, use await data.json() to parse it asynchronously
+    data = await data.json()
     try:
         new_business = Business(
             uid=uids,
@@ -68,175 +75,266 @@ def add_business(uids,no):
                 "countries": []
             }),
             tax_priorities=data.get("tax_priorities", []),
-            no_business = no,
+            no_business=no,
         )
-        db.session.add(new_business)
-        db.session.commit()
-        return jsonify({"message": "Business data added successfully", "uid": uids}), 201 # Return a JSON response
+        db.add(new_business)
+        db.commit()
+        return {"message": "Business data added successfully", "uid": uids}
     except Exception as e:
-        db.session.rollback() # Rollback in case of error
+        db.rollback()
         print(f"Error adding business: {e}")
-        return jsonify({"error": "Error adding business"}), 500 #Return error
+        raise HTTPException(status_code=500, detail="Error adding business")
 
 
-@app.route("/tax_minimalization/<string:uid>/<string:no>", methods=["GET"])
-def tax_plan(uid, no):
-    business = Business.query.filter_by(uid=uid,no_business=no).first()
+@app.get("/tax_minimalization/{uid}/{no}")
+async def tax_plan(uid: str, no: str, db: Session = Depends(get_db)):
+    business = db.query(Business).filter_by(uid=uid, no_business=no).first()
     if business:
         business_data = business.to_dict()
-        tax_plan = tax_minimalization(business_data, uid)  # Pass uid to llmmodel
+        tax_plan =await tax_minimalization(business_data, uid)  # Pass uid to llmmodel
         if tax_plan:
-            return jsonify(tax_plan), 200  # Return tax plan as JSON
+            return tax_plan  # Return tax plan as JSON
         else:
-            return jsonify({"error": "Error generating tax plan"}), 500
+            raise HTTPException(status_code=500, detail="Error generating tax plan")
     else:
-        return jsonify({"error": "Business not found"}), 404
+        raise HTTPException(status_code=404, detail="Business not found")
     
-@app.route("/tax_minimalization/<string:uid>/<string:no>", methods=["post"])   
-def s_tax_plan(uid,no):
+@app.post("/tax_minimalization/{uid}/{no}")
+async def s_tax_plan(uid: str, no: str, tax_plan_data: dict, db: Session = Depends(get_db)):
+    business = db.query(Business).filter_by(uid=uid, no_business=no).first()
+    if business:
+        business_data = business.to_dict()
+        Business_no=business_data["id"]
     try:
-        tax_plan_data = request.get_json()
-        # Validate that tax_plan_data is a dictionary.
-        if not isinstance(tax_plan_data, dict):
-            return jsonify({"error": "Invalid tax plan data format. Must be a JSON object."}), 400
-
-        # Check if a TaxPlan entry already exists for this business_id and supabase_uid.
-        existing_tax_plan = TaxPlan.query.filter_by(supabase_uid=uid, business_id=no).first()
+        existing_tax_plan = db.query(TaxPlan).filter_by(supabase_uid=uid, business_id=Business_no).first()
         if existing_tax_plan:
-            #Check if sec_taxplan already exists and is not None
             if existing_tax_plan.sec_taxplan:
-                return jsonify({"message": "Tax plan already exists for this business."}), 200
-            else: #update existing tax plan
+                return {"message": "Tax plan already exists for this business."}
+            else:
                 existing_tax_plan.sec_taxplan = json.dumps(tax_plan_data)
-                db.session.commit()
-                return jsonify({"message": "Tax plan updated successfully"}), 200
-        else: #create a new tax plan
+                db.commit()
+                return {"message": "Tax plan updated successfully"}
+        else:
             new_tax_plan = TaxPlan(
                 supabase_uid=uid,
-                business_id=no,
-                sec_taxplan=json.dumps(tax_plan_data)  # Store as JSON string
+                business_id=Business_no,
+                sec_taxplan=json.dumps(tax_plan_data)
             )
-            db.session.add(new_tax_plan)
-            db.session.commit()
-            return jsonify({"message": "Tax plan added successfully"}), 201
+            db.add(new_tax_plan)
+            db.commit()
+            return {"message": "Tax plan added successfully"}
     except Exception as e:
-        db.session.rollback()
+        db.rollback()
         print(f"Error adding tax plan: {e}")
-        return jsonify({"error": f"Error adding tax plan: {e}"}), 500
+        raise HTTPException(status_code=500, detail=f"Error adding tax plan: {e}")
 
-@app.route("/get_tax_plan/<string:supabase_uid>/<int:no>", methods=["GET"])
-def get_tax_plan(supabase_uid, no):
+@app.get("/get_tax_plan/{supabase_uid}/{no}")
+async def get_tax_plan(supabase_uid: str, no: int, db: Session = Depends(get_db)):
+    business = db.query(Business).filter_by(uid=supabase_uid, no_business=no).first()
+    if business:
+        business_data = business.to_dict()
+        Business_no=business_data["id"]
     try:
-        tax_plan = TaxPlan.query.filter_by(supabase_uid=supabase_uid, business_id=no).first()
+        tax_plan = db.query(TaxPlan).filter_by(supabase_uid=supabase_uid, business_id=Business_no).first()
         if tax_plan:
             tax_plan_data = tax_plan.to_dict()
             if "sec_taxplan" in tax_plan_data and tax_plan_data["sec_taxplan"] is not None:
-                return jsonify({"sec_taxplan": tax_plan_data["sec_taxplan"]}), 200
+                return {"sec_taxplan": tax_plan_data["sec_taxplan"]}
             else:
-                return jsonify({"message": "sec_taxplan not found for this business"}), 404
+                return {"message": "sec_taxplan not found for this business"}
         else:
-            return jsonify({"message": "Tax plan not found"}), 404
+            return {"message": "Tax plan not found"}
     except Exception as e:
         print(f"Error retrieving tax plan: {e}")
-        return jsonify({"error": "Error retrieving tax plan"}), 500
+        raise HTTPException(status_code=500, detail="Error retrieving tax plan")
     
 
-@app.route("/businessstructure/<string:uid>/<int:no>", methods=["GET"])  # Corrected data type for id
-def get_businessstructure_doc(uid,no):
-    business = Business.query.filter_by(uid=uid, no_business=no).first()
+@app.get("/businessstructure/{uid}/{no}")
+async def get_businessstructure_doc(uid: str, no: int, db: Session = Depends(get_db)):
+    business = db.query(Business).filter_by(uid=uid, no_business=no).first()
     if not business:
-        return jsonify({"error": "Business not found"}), 404
-        
-    id = business.id 
+        raise HTTPException(status_code=404, detail="Business not found")
+    id = business.id
+    business_data=business.to_dict()
     try:
-        existing_progress = BusinessProgress.query.filter_by(business_id=id).first()
+        existing_progress = db.query(BusinessProgress).filter_by(business_id=id).first()
         if existing_progress:
-            #Update existing record if it exists
+            print(existing_progress)
             business_structure = json.loads(existing_progress.progress)["businessstructure"]
+            return business_structure
+        else:
+            try:
+                taxplan = db.query(TaxPlan).filter_by(business_id=id).first()
+                print(tax_plan)
+                taxset=taxplan.to_dict()
+                sec_taxplan=taxset["sec_taxplan"]
+            except Exception as e:
+                print("sec_plan is on error",e)
+            guild_plan=await business_guild(business_data,sec_taxplan,id)
             
-            return jsonify(business_structure), 200
+            guild_db = BusinessProgress(
+            business_id=id,
+            progress=json.dumps(guild_plan)
+            )
+            db.add(guild_db)
+            db.commit()
+            return guild_plan["businessstructure"] #Return business data if no progress is found
+
     except Exception as e:
         print(f"Error: {e}")
-        return jsonify({"error": "An unexpected error occurred"}), 500
-
-
-    return jsonify(business.to_dict())
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
     
-
-@app.route("/legalcompliance&licensingdocuments/<string:uid>/<int:no>")
-def get_legalcompliancelicensingdocuments(uid,no):
-    business = Business.query.filter_by(uid=uid, no_business=no).first()
+@app.get("/legalcompliance&licensingdocuments/{uid}/{no}")
+async def get_legalcompliancelicensingdocuments(uid: str, no: int, db: Session = Depends(get_db)):
+    business = db.query(Business).filter_by(uid=uid, no_business=no).first()
     if not business:
-        return jsonify({"error": "Business not found"}), 404
-        
-    id = business.id 
+        raise HTTPException(status_code=404, detail="Business not found")
+
+    id = business.id
     try:
-        existing_progress = BusinessProgress.query.filter_by(business_id=id).first()
+        existing_progress = db.query(BusinessProgress).filter_by(business_id=id).first()
         if existing_progress:
-            #Update existing record if it exists
             business_structure = json.loads(existing_progress.progress)["legal compliance &licensing documents"]
-            
-            return jsonify(business_structure), 200
-    except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({"error": "An unexpected error occurred"}), 500
+            return business_structure
+        else:
+            return {"message": "No legal compliance documents found"} # Return informative message instead of error
 
-@app.route("/tax&financedocuments/<string:uid>/<int:no>")
-def  get_taxfinancedocuments(uid,no):
-    business = Business.query.filter_by(uid=uid, no_business=no).first()
-    if not business:
-        return jsonify({"error": "Business not found"}), 404
-        
-    id = business.id
-    try:
-        existing_progress = BusinessProgress.query.filter_by(business_id=id).first()
-        if existing_progress:
-            #Update existing record if it exists
-            business_structure = json.loads(existing_progress.progress)[ "tax & finance documents"]
-            
-            return jsonify(business_structure), 200
     except Exception as e:
         print(f"Error: {e}")
-        return jsonify({"error": "An unexpected error occurred"}), 500
-    
-@app.route("/employeerelateddocuments/<string:uid>/<int:no>")
-def  get_employeerelateddocuments(uid,no):
-    business = Business.query.filter_by(uid=uid, no_business=no).first()
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+@app.get("/tax&financedocuments/{uid}/{no}")
+async def get_taxfinancedocuments(uid:str, no: int, db: Session = Depends(get_db)):
+    business = db.query(Business).filter_by(uid=uid, no_business=no).first()
     if not business:
-        return jsonify({"error": "Business not found"}), 404
-        
+        raise HTTPException(status_code=404, detail="Business not found")
+
     id = business.id
     try:
-        existing_progress = BusinessProgress.query.filter_by(business_id=id).first()
+        existing_progress = db.query(BusinessProgress).filter_by(business_id=id).first()
         if existing_progress:
-            #Update existing record if it exists
+            business_structure = json.loads(existing_progress.progress)["tax & finance documents"]
+            return business_structure
+        else:
+            return {"message": "No tax & finance documents found"}
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+@app.get("/employeerelateddocuments/{uid}/{no}")
+async def get_employeerelateddocuments(uid: str, no: int, db: Session = Depends(get_db)):
+    business = db.query(Business).filter_by(uid=uid, no_business=no).first()
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+
+    id = business.id
+    try:
+        existing_progress = db.query(BusinessProgress).filter_by(business_id=id).first()
+        if existing_progress:
             business_structure = json.loads(existing_progress.progress)["employee related documents(if hiring)"]
-            
-            return jsonify(business_structure), 200
+            return business_structure
+        else:
+            return {"message": "No employee related documents found"}
     except Exception as e:
         print(f"Error: {e}")
-        return jsonify({"error": "An unexpected error occurred"}), 500
-    
-@app.route("/optionalbrandingipdocuments/<string:uid>/<int:no>")
-def  getoptionalbrandingipdocuments(uid,id):
-    business = Business.query.filter_by(uid=uid, no_business=no).first()
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+
+@app.get("/optionalbrandingipdocuments/{uid}/{no}")
+async def getoptionalbrandingipdocuments(uid: str, no: int, db: Session = Depends(get_db)):
+    business = db.query(Business).filter_by(uid=uid, no_business=no).first()
     if not business:
-        return jsonify({"error": "Business not found"}), 404
-        
+        raise HTTPException(status_code=404, detail="Business not found")
+
     id = business.id
     try:
-        existing_progress = BusinessProgress.query.filter_by(business_id=id).first()
+        existing_progress = db.query(BusinessProgress).filter_by(business_id=id).first()
         if existing_progress:
-            #Update existing record if it exists
             business_structure = json.loads(existing_progress.progress)["optional branding/ip documents"]
-            
-            return jsonify(business_structure), 200
+            return business_structure
+        else:
+            return {"message": "No optional branding/IP documents found"}
     except Exception as e:
         print(f"Error: {e}")
-        return jsonify({"error": "An unexpected error occurred"}), 500   
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+
+
+#flask code
+# @app.route("/legalcompliance&licensingdocuments/<string:uid>/<int:no>")
+# def get_legalcompliancelicensingdocuments(uid,no):
+#     business = Business.query.filter_by(uid=uid, no_business=no).first()
+#     if not business:
+#         return jsonify({"error": "Business not found"}), 404
+        
+#     id = business.id 
+#     try:
+#         existing_progress = BusinessProgress.query.filter_by(business_id=id).first()
+#         if existing_progress:
+#             #Update existing record if it exists
+#             business_structure = json.loads(existing_progress.progress)["legal compliance &licensing documents"]
+            
+#             return jsonify(business_structure), 200
+#     except Exception as e:
+#         print(f"Error: {e}")
+#         return jsonify({"error": "An unexpected error occurred"}), 500
+
+# @app.route("/tax&financedocuments/<string:uid>/<int:no>")
+# def  get_taxfinancedocuments(uid,no):
+#     business = Business.query.filter_by(uid=uid, no_business=no).first()
+#     if not business:
+#         return jsonify({"error": "Business not found"}), 404
+        
+#     id = business.id
+#     try:
+#         existing_progress = BusinessProgress.query.filter_by(business_id=id).first()
+#         if existing_progress:
+#             #Update existing record if it exists
+#             business_structure = json.loads(existing_progress.progress)[ "tax & finance documents"]
+            
+#             return jsonify(business_structure), 200
+#     except Exception as e:
+#         print(f"Error: {e}")
+#         return jsonify({"error": "An unexpected error occurred"}), 500
+    
+# @app.route("/employeerelateddocuments/<string:uid>/<int:no>")
+# def  get_employeerelateddocuments(uid,no):
+#     business = Business.query.filter_by(uid=uid, no_business=no).first()
+#     if not business:
+#         return jsonify({"error": "Business not found"}), 404
+        
+#     id = business.id
+#     try:
+#         existing_progress = BusinessProgress.query.filter_by(business_id=id).first()
+#         if existing_progress:
+#             #Update existing record if it exists
+#             business_structure = json.loads(existing_progress.progress)["employee related documents(if hiring)"]
+            
+#             return jsonify(business_structure), 200
+#     except Exception as e:
+#         print(f"Error: {e}")
+#         return jsonify({"error": "An unexpected error occurred"}), 500
+    
+# @app.route("/optionalbrandingipdocuments/<string:uid>/<int:no>")
+# def  getoptionalbrandingipdocuments(uid,id):
+#     business = Business.query.filter_by(uid=uid, no_business=no).first()
+#     if not business:
+#         return jsonify({"error": "Business not found"}), 404
+        
+#     id = business.id
+#     try:
+#         existing_progress = BusinessProgress.query.filter_by(business_id=id).first()
+#         if existing_progress:
+#             #Update existing record if it exists
+#             business_structure = json.loads(existing_progress.progress)["optional branding/ip documents"]
+            
+#             return jsonify(business_structure), 200
+#     except Exception as e:
+#         print(f"Error: {e}")
+#         return jsonify({"error": "An unexpected error occurred"}), 500   
     
 
-if __name__ == "__main__":
-    init_db(app)
-    http_server = WSGIServer(('0.0.0.0', 8000), app)
-    http_server.serve_forever()
+# if __name__ == "__main__":
+#     init_db(app)
+#     http_server = WSGIServer(('0.0.0.0', 8000), app)
+#     http_server.serve_forever()
