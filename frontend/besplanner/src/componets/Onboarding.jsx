@@ -1,27 +1,35 @@
 import React, { useEffect, useState } from 'react'
-import { Link,useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import question from '../assets/question.json'  // Contains all questions and form structure
 import businessbase from '../assets/businessbase.json'  // Contains initial empty state structure
 import TagInput from '../componet/TagInput'  // Custom component for handling multiple selections
 import './onboarding.css'  // Updated import path
 import { getuid } from './getuid'
-import axios from 'axios';
-
+import axios from 'axios'
+import { supabase } from './sign-up'  // Import Supabase client
 
 function Onboarding() {
-    
-    
+    // Setting navigate function
+    const navigate = useNavigate()
 
-    //seting navigate funtion
-    const navigate =useNavigate();
     // State Management
-    // currentQuestion: Tracks which page we're on (0-based index)
     const [currentQuestion, setCurrentQuestion] = useState(0)
-    // formData: Stores all the user's answers in a structured format
     const [formData, setFormData] = useState(businessbase)
-    // currentpage: Stores the current page's questions and metadata
     const [currentpage, setCurrentpage] = useState(question.pages[0])
-    const userId = getuid();
+    const userId = getuid()
+
+    // Check if the user is logged in
+    const checkUserLogin = async () => {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+            navigate('/signup')  // Redirect to sign-in page if not logged in
+        }
+    }
+
+    // Run the login check on component mount
+    useEffect(() => {
+        checkUserLogin()
+    }, [])
 
     // Updates the current page whenever the question number changes
     useEffect(() => {
@@ -297,6 +305,6 @@ function Onboarding() {
           </div>
         </>
       )
-    }
-    
-    export default Onboarding
+}
+
+export default Onboarding

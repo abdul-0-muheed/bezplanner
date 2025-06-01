@@ -12,6 +12,6 @@ export const getuid = () =>{
         }
         fetchUID()
     },[])
-    // console.log(uid)
+    console.log(uid)
     return uid
 }

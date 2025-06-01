@@ -16,7 +16,7 @@ async def search(query):
             soup = BeautifulSoup(text, 'html.parser')
 
             results = []
-            for result in soup.find_all('a', {'class': 'result__a'}, limit=3):
+            for result in soup.find_all('a', {'class': 'result__a'}, limit=6):
                 title = result.get_text()
                 link = result['href']
                 snippet_tag = result.find_parent('div', class_='result__body')

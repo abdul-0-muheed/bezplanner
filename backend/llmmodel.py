@@ -248,27 +248,27 @@ async def business_guild(business,tax_plan,id):
                 {{
                 "businessstructure": {{
                     "documents": [
-                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
+                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission),"URL":www.url1.com"}}
                     ]
                 }},
                 "legal compliance &licensing documents": {{
                     "documents": [
-                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
+                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission),"URL":www.url1.com"}}
                     ]
                 }},
                 "tax & finance documents": {{
                     "documents": [
-                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
+                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission),"URL":www.url1.com"}}
                     ]
                 }},
                 "employee related documents(if hiring)": {{
                     "documents": [
-                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
+                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission),"URL":www.url1.com"}}
                     ]
                 }},
                 "optional branding/ip documents": {{
                     "documents": [
-                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"}}
+                    {{"documenttitle": "document_title", "process": "process_description (including how to do it, where to submit it, and the relevant URL for submission)"URL":www.url1.com"}}
                     ]
                 }}
                 }}

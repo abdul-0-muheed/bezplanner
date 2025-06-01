@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 import json
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
 from database import get_db
@@ -17,9 +18,16 @@ load_dotenv()
 
 #sbp_fdb6493e30c875d8b70bf199eb82931eaf6568dd  supabase
 app = FastAPI()
-
+origins = ["http://localhost:5173"]  # Add your frontend's origin
 # executor = ThreadPoolExecutor(max_workers=1000)  # Handle concurrent requests
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,  # Allow cookies
+    allow_methods=["*"],  # Allow all methods (GET, POST, PUT, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
 
 
 # app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {

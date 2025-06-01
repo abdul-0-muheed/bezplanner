@@ -1,0 +1,15 @@
+.vertical-progress-bar-container {
+  width: 20px; /* Adjust as needed */
+  height: 100px; /* Adjust as needed */
+  background-color: #f0f0f0; /* Light gray background */
+  border-radius: 5px; /* Optional: Rounded corners */
+  position: relative; /* To position the inner bar */
+}
+
+.vertical-progress-bar {
+  width: 100%;
+  background-color: #4CAF50; /* Green progress bar */
+  position: absolute;
+  bottom: 0; /* Start from the bottom */
+  border-radius: 5px; /* Optional: Rounded corners */
+}

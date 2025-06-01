@@ -1,0 +1,214 @@
+/* Tax Component Styles */
+.taxplan-contioner {
+    max-width:700px; /* Adjust as needed */
+    /* max-height:800px ; */
+    margin: 30px auto;
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+.taxplan-ul input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #555;
+  border-radius: 50%;
+  position: relative;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.taxplan-ul input[type="checkbox"]:checked {
+  background-color: #5a65ff;
+  border-color: #517fff;
+  box-shadow: 0 0 5px rgba(22, 18, 248, 0.5);
+  box-sizing: border-box;
+}
+
+.taxplan-ul {
+    list-style: none; /* Remove default bullets */
+    padding: 0;
+    margin: 0;
+}
+
+.taxplan-ul li {
+    margin-bottom: 15px;
+}
+
+.taxplan-ul li label {
+    display: flex;
+    align-items: center;
+    gap: 8px;  /* Space between checkbox and text */
+}
+
+.taxplan-ul input[type="checkbox"] {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.taxplan-ul input[type="checkbox"]:checked + label { /* Style when checked */
+    color: #3498db; /* Change to your preferred color */
+    font-weight: bold;
+}
+
+.taxplan-ul input[type="checkbox"]:hover {
+    cursor: pointer;
+}
+
+button { /* Style for Create Guild button */
+  background-color: #3498db;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #2980b9;
+}
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+.button-cont{
+display: flex; /* Enable flexbox layout */
+  justify-content: center; /* Center horizontally */
+
+}
+
+/*Responsive design adjustments*/
+@media (max-width: 600px) {
+  .taxplan-contioner {
+    padding: 10px; /* Reduced padding for smaller screens */
+  }
+  .taxplan-ul li{
+    margin-bottom: 5px; /*Reduced margin for smaller screens*/
+  }
+}
+
+/* Infinite Loader Styles */
+body {
+  background-color: #55c1FA;
+}
+
+.loader-wrapper {
+  width: 148px;
+  height: 100px;
+  position: absolute;
+  margin: -50px 0 0 -74px;
+  left: 50%;
+  top: 60%;
+}
+
+.loader {
+  width: 148px;
+  height: 100px;
+  position: absolute;
+}
+
+.loader:after {
+  content: "";
+  position: absolute;
+  display: block;
+  animation: shadow 1.2s infinite linear;
+  bottom: 0em;
+  left: 0;
+  height: 0.25em;
+  width: 1em;
+  border-radius: 50%;
+  background-color: darken(#55c1FA, 45%);
+  opacity: 0.3;
+}
+
+.roller,
+.roller:last-child {
+  width: 70px;
+  height: 70px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  animation: rollercoaster 1.2s infinite linear;
+  transform: rotate(135deg);
+}
+
+.roller:last-child {
+  left: auto;
+  right: 0;
+  transform: rotate(-45deg);
+  animation: rollercoaster2 1.2s infinite linear;
+}
+
+.roller:before,
+.roller:last-child:before {
+  content: "";
+  display: block;
+  width: 15px;
+  height: 15px;
+  background: #000;
+  border-radius: 50%;
+}
+
+/* Keyframes */
+@keyframes rollercoaster {
+  0% {
+    transform: rotate(135deg);
+  }
+  50% {
+    transform: rotate(495deg);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(495deg);
+    opacity: 0;
+  }
+}
+
+@keyframes rollercoaster2 {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(-45deg);
+  }
+  100% {
+    transform: rotate(-405deg);
+  }
+}
+
+@keyframes shadow {
+  0% {
+    opacity: 0.3;
+    transform: translateX(65px) scale(0.5, 0.5);
+  }
+  50% {
+    transform: translateX(60px) scale(1.2, 1.2);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateX(60px);
+    opacity: 0.3;
+  }
+}
+
+#loader2:after {
+  animation-delay: 0.15s;
+}
+
+#loader2 .roller {
+  animation-delay: 0.15s;
+}
+
+#loader3:after {
+  animation-delay: 0.3s;
+}
+
+#loader3 .roller {
+  animation-delay: 0.3s;
+}
+/* Infinite Loader Styles */

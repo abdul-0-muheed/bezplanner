@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 .nav-bar{
   display: flex;
   justify-content: space-between;
