@@ -12,6 +12,8 @@ from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
 from database import get_db
 from sqlalchemy.orm import Session
+import httpx
+import asyncio
 
 
 load_dotenv()
@@ -41,8 +43,22 @@ app.add_middleware(
 # db.init_app(app)
 init_db()
 
+async def ping_external_api():
+    url = "https://api.github.com"  # Example external API
+
+    while True:
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url)
+                print(f"Pinged {url}, status: {response.status_code}")
+        except Exception as e:
+            print(f"Error pinging API: {e}")
+
+        await asyncio.sleep(300)  # Wait 5 minutes before next ping
+
 @app.on_event("startup")
 async def startup_event():
+    asyncio.create_task(ping_external_api())
     # Database is already initialized, no need for await init_db() here
     print("FastAPI app started!")  # Add a print statement to confirm
     pass #remove  await init_db()

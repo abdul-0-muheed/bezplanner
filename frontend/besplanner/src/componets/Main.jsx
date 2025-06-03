@@ -21,16 +21,16 @@ import {
 } from 'lucide-react'
 
 function Main() {
-  useEffect(()=>{
-    try{
-      const response = axios.get(`https://guild-to-business.onrender.com`);
-      if (response){
-        console.log(response)
-      }}
-    catch  {
-      console.log("error")
-    }
-  })
+   useEffect(() => {
+    axios.get(`https://guild-to-business.onrender.com`)
+      .then(response => {
+        console.log(response.data); // Access the data from the response
+      })
+      .catch(error => {
+        console.error("Error fetching data:", error); // Log the actual error
+      });
+  }, []); // Add empty dependency array to prevent infinite loop
+  
   const uid =getuid()
   console.log(uid)
 
