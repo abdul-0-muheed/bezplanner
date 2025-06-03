@@ -15,7 +15,8 @@ function Tax() {
         if (uid){
         const fetchTaxPlan = async () => {
             try {
-                const response = await axios.get(`http://127.0.0.1:8000/tax_minimalization/${uid}/1`);
+                // const response = await axios.get(`http://127.0.0.1:8000/tax_minimalization/${uid}/1`);
+                const response = await axios.get(`https://guild-to-business.onrender.com/tax_minimalization/${uid}/1`);
                 setTaxData(response.data);
             } catch (error) {
                 console.error('Error fetching tax plan:', error);
@@ -50,8 +51,8 @@ function Tax() {
              console.log( postData); // Log the data being sent for debugging
 
             // Send the POST request
-            await axios.post(`http://127.0.0.1:8000/tax_minimalization/${uid}/1`, postData); // Update the URL as needed
-
+            // await axios.post(`http://127.0.0.1:8000/tax_minimalization/${uid}/1`, postData); // Update the URL as needed
+            await axios.post(`https://guild-to-business.onrender.com/tax_minimalization/${uid}/1`, postData);
             // Redirect to another page after successful POST request
             navigate('/guild'); // Replace '/success' with the actual path
         } catch (error) {

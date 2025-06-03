@@ -26,11 +26,16 @@ function Guildplan1() {
 
         // Dynamically update the steps array once UID is available
         setSteps([
-          `http://127.0.0.1:8000/businessstructure/${user.id}/1`,
-          `http://127.0.0.1:8000/legalcompliance&licensingdocuments/${user.id}/1`,
-          `http://127.0.0.1:8000/tax&financedocuments/${user.id}/1`,
-          `http://127.0.0.1:8000/employeerelateddocuments/${user.id}/1`,
-          `http://127.0.0.1:8000/optionalbrandingipdocuments/${user.id}/1`,
+          // `http://127.0.0.1:8000/businessstructure/${user.id}/1`,
+          // `http://127.0.0.1:8000/legalcompliance&licensingdocuments/${user.id}/1`,
+          // `http://127.0.0.1:8000/tax&financedocuments/${user.id}/1`,
+          // `http://127.0.0.1:8000/employeerelateddocuments/${user.id}/1`,
+          // `http://127.0.0.1:8000/optionalbrandingipdocuments/${user.id}/1`,
+          `https://guild-to-business.onrender.com/businessstructure/${user.id}/1`,
+          `https://guild-to-business.onrender.com/legalcompliance&licensingdocuments/${user.id}/1`,
+          `https://guild-to-business.onrender.com/tax&financedocuments/${user.id}/1`,
+          `https://guild-to-business.onrender.com/employeerelateddocuments/${user.id}/1`,
+          `https://guild-to-business.onrender.com/optionalbrandingipdocuments/${user.id}/1`,
         ]);
       } else {
         console.error("Error fetching UID:", error);
