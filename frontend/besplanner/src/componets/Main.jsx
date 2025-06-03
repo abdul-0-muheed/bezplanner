@@ -21,6 +21,9 @@ import {
 } from 'lucide-react'
 
 function Main() {
+  useEffect(()=>{
+    const response = axios.get(`https://guild-to-business.onrender.com`);
+  })
   const uid =getuid()
   console.log(uid)
 
