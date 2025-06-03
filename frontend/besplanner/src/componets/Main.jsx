@@ -19,6 +19,8 @@ import {
   Award,
   BookOpen
 } from 'lucide-react'
+import axios from 'axios';
+
 
 function Main() {
    useEffect(() => {
@@ -30,7 +32,7 @@ function Main() {
         console.error("Error fetching data:", error); // Log the actual error
       });
   }, []); // Add empty dependency array to prevent infinite loop
-  
+
   const uid =getuid()
   console.log(uid)
 
