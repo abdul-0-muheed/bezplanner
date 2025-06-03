@@ -44,7 +44,7 @@ app.add_middleware(
 init_db()
 
 async def ping_external_api():
-    url = "https://api.github.com"  # Example external API
+    url = "https://api.github.com/emoji"  # Example external API
 
     while True:
         try:
