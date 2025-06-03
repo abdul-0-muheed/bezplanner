@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { getuid } from './getuid';
 import { useNavigate } from 'react-router-dom';
-import './tax.css'
+import { Loader, CheckSquare, Square, ArrowRight, Shield } from 'lucide-react';
 
 function Tax() {
     const [taxData, setTaxData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [selectedTaxPlan, setSelectedTaxPlan] = useState([]); // State for selected tax plan
-    const uid = getuid()
-    const navigate = useNavigate(); // Initialize useNavigate
+    const [selectedTaxPlan, setSelectedTaxPlan] = useState([]);
+    const uid = getuid();
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (uid){
@@ -63,52 +63,82 @@ function Tax() {
 
 
     if (isLoading) {
-        return <div><div className="loader-wrapper">
-      <div className="loader">
-        <div className="roller"></div>
-        <div className="roller"></div>
-      </div>
-
-      <div id="loader2" className="loader">
-        <div className="roller"></div>
-        <div className="roller"></div>
-      </div>
-
-      <div id="loader3" className="loader">
-        <div className="roller"></div>
-        <div className="roller"></div>
-      </div>
-    </div></div>;
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+                <div className="flex flex-col items-center space-y-4">
+                    <Loader className="w-12 h-12 text-purple-400 animate-spin" />
+                    <p className="text-white text-lg font-medium">Analyzing tax optimization strategies...</p>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div>
-            <div className='taxplan-contioner'>
-            {taxData && (
-                <ul className='taxplan-ul'>
-                    {taxData['taxplan'].map((tax, index) => (
-                            <li key={index}>
-                                <label>
-                                    <input
-                                        type="checkbox" // Changed to checkbox
-                                        name={`taxPlan-${index}`} // Added unique name
-                                        value={index}
-                                        checked={selectedTaxPlan.includes(index)}
-                                        onChange={() => handleCheckboxChange(index)}
-                                    />
-                                    {tax}
-                                </label>
-                            </li>
-                        ))}
-                </ul>
-            )}
-            {!taxData && !isLoading && <p>No tax data found.</p>}
-            <div className='button-cont'><button onClick={handleCreateGuild} disabled={selectedTaxPlan.length === 0}>
-                    Create Guild
-                </button>
-            </div>
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto mt-10">
+                {/* Header Section */}
+                <div className="text-center mb-12">
+                    <div className="inline-flex items-center px-4 py-2 bg-purple-500/20 rounded-full text-purple-300 text-sm font-medium mb-6">
+                        <Shield className="w-4 h-4 mr-2" />
+                        Tax Optimization Strategies
+                    </div>
+                    <h1 className="text-4xl font-bold text-white mb-4">
+                        Choose Your <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">Tax Planning</span> Strategy
+                    </h1>
+                    <p className="text-gray-300 text-lg">
+                        Select the tax optimization strategies that best suit your business needs
+                    </p>
+                </div>
+
+                {/* Tax Plans Section */}
+                <div className="bg-slate-800/50 rounded-2xl border border-purple-500/20 p-8 backdrop-blur-sm">
+                    {taxData && (
+                        <div className="space-y-4">
+                            {taxData['taxplan'].map((tax, index) => (
+                                <div
+                                    key={index}
+                                    className="flex items-center space-x-4 p-4 rounded-xl hover:bg-slate-700/30 transition-all duration-300 cursor-pointer"
+                                    onClick={() => handleCheckboxChange(index)}
+                                >
+                                    <div className="text-purple-400">
+                                        {selectedTaxPlan.includes(index) ? (
+                                            <CheckSquare className="w-6 h-6" />
+                                        ) : (
+                                            <Square className="w-6 h-6" />
+                                        )}
+                                    </div>
+                                    <label className="text-gray-300 hover:text-white cursor-pointer flex-grow">
+                                        {tax}
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {!taxData && !isLoading && (
+                        <p className="text-gray-300 text-center">No tax optimization strategies found.</p>
+                    )}
+                </div>
+
+                {/* Action Button */}
+                <div className="mt-8 text-center">
+                    <button
+                        onClick={handleCreateGuild}
+                        disabled={selectedTaxPlan.length === 0}
+                        className={`
+                            inline-flex items-center px-8 py-4 rounded-full font-semibold transition-all duration-300 transform
+                            ${selectedTaxPlan.length === 0 
+                                ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 hover:scale-105'
+                            }
+                        `}
+                    >
+                        Continue to Next Step
+                        <ArrowRight className="ml-2 w-5 h-5" />
+                    </button>
+                </div>
             </div>
         </div>
     );
 }
+
 export default Tax;

@@ -1,18 +1,15 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import question from '../assets/question.json'  // Contains all questions and form structure
-import businessbase from '../assets/businessbase.json'  // Contains initial empty state structure
-import TagInput from '../componet/TagInput'  // Custom component for handling multiple selections
-import './onboarding.css'  // Updated import path
+import { supabase } from './sign-up'
+import { ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react'
+import question from '../assets/question.json'
+import businessbase from '../assets/businessbase.json'
+import TagInput from '../componet/TagInput'
 import { getuid } from './getuid'
 import axios from 'axios'
-import { supabase } from './sign-up'  // Import Supabase client
 
 function Onboarding() {
-    // Setting navigate function
     const navigate = useNavigate()
-
-    // State Management
     const [currentQuestion, setCurrentQuestion] = useState(0)
     const [formData, setFormData] = useState(businessbase)
     const [currentpage, setCurrentpage] = useState(question.pages[0])
@@ -198,29 +195,40 @@ function Onboarding() {
 
     // Renders different types of input fields based on question type
     const renderInput = (question) => {
+        const baseInputStyles = `
+            w-full bg-slate-700/50 border border-purple-500/20 rounded-lg px-4 py-3 
+            text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 
+            focus:ring-1 focus:ring-purple-500 transition-all duration-300
+        `
+
         switch (question.type) {
             case 'text':
             case 'textarea':
                 return (
                     <input
                         type="text"
+                        className={baseInputStyles}
                         value={getValueFromPath(formData, question.jsonPath) || ''}
                         onChange={(e) => handleInputChange(question.id, e.target.value, question.jsonPath)}
                         required={question.required}
+                        placeholder={`Enter ${question.label.toLowerCase()}`}
                     />
                 )
             case 'number':
                 return (
                     <input
                         type="number"
+                        className={baseInputStyles}
                         value={getValueFromPath(formData, question.jsonPath) || ''}
                         onChange={(e) => handleInputChange(question.id, Number(e.target.value), question.jsonPath)}
                         required={question.required}
+                        placeholder={`Enter ${question.label.toLowerCase()}`}
                     />
                 )
             case 'boolean':
                 return (
                     <select
+                        className={baseInputStyles}
                         value={getValueFromPath(formData, question.jsonPath) || ''}
                         onChange={(e) => handleInputChange(question.id, e.target.value === 'true', question.jsonPath)}
                         required={question.required}
@@ -233,6 +241,7 @@ function Onboarding() {
             case 'select':
                 return (
                     <select
+                        className={baseInputStyles}
                         value={getValueFromPath(formData, question.jsonPath) || ''}
                         onChange={(e) => handleInputChange(question.id, e.target.value, question.jsonPath)}
                         required={question.required}
@@ -265,46 +274,80 @@ function Onboarding() {
 
     // Component render method
     return (
-        <>  
-          <div className="onboarding-container">
-            <div className="onboarding-header">
-              <h1>{currentpage.title}</h1>
-              <p>{currentpage.description}</p>
-            </div>
-            <div className='onboarding-content'>
-                 <div className="progress-bar">
-                      <div 
-                          className="progress-fill" 
-                          style={{width: `${((currentQuestion + 1) / question.pages.length) * 100}%`}}
-                      ></div>
-                  </div>
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto">
+                {/* Progress Header */}
+                <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4 mt-10">
+                        <h2 className="text-3xl font-bold text-white">
+                            {currentpage.title}
+                        </h2>
+                        <span className="text-purple-400">
+                            Step {currentQuestion + 1} of {question.pages.length}
+                        </span>
+                    </div>
+                    
+                    {/* Progress Bar */}
+                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                        <div 
+                            className="h-full bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-300"
+                            style={{width: `${((currentQuestion + 1) / question.pages.length) * 100}%`}}
+                        ></div>
+                    </div>
+                </div>
 
-                {currentpage.questions.map((q) => (
-                        <div key={q.id} className='onboarding-question-section'>
-                            <label>{q.label}</label>
-                            {renderInput(q)}
-                        </div>
-                ))}
+                {/* Form Card */}
+                <div className="bg-slate-800/50 rounded-2xl p-8 border border-purple-500/20 backdrop-blur-sm">
+                    <p className="text-gray-300 mb-8">{currentpage.description}</p>
 
-                <div className='onboarding-button-section'>
-                        <button 
-                            className='onboarding-button' 
+                    {/* Questions */}
+                    <div className="space-y-6">
+                        {currentpage.questions.map((q) => (
+                            <div key={q.id} className="space-y-2">
+                                <label className="block text-white text-lg font-medium mb-2">
+                                    {q.label}
+                                    {q.required && <span className="text-purple-400 ml-1">*</span>}
+                                </label>
+                                <div className="relative">
+                                    {renderInput(q)}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Navigation Buttons */}
+                    <div className="flex justify-between mt-12">
+                        <button
                             onClick={handleBack}
                             disabled={currentQuestion === 0}
+                            className={`flex items-center px-6 py-3 rounded-full font-semibold transition-all duration-300
+                                ${currentQuestion === 0 
+                                    ? 'bg-slate-700 text-slate-400 cursor-not-allowed' 
+                                    : 'bg-slate-700 text-white hover:bg-slate-600'}`}
                         >
+                            <ArrowLeft className="w-5 h-5 mr-2" />
                             Back
                         </button>
-                        <button 
-                            className='onboarding-button' 
+                        
+                        <button
                             onClick={handleNext}
+                            className="flex items-center px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 
+                                text-white rounded-full font-semibold hover:from-purple-700 hover:to-blue-700 
+                                transition-all duration-300 transform hover:scale-105"
                         >
                             {currentQuestion === question.pages.length - 1 ? 'Submit' : 'Next'}
+                            <ArrowRight className="w-5 h-5 ml-2" />
                         </button>
+                    </div>
                 </div>
             </div>
-          </div>
-        </>
-      )
+        </div>
+    )
+}
+
+// Helper function to safely access nested object properties
+const getValueFromPath = (obj, path) => {
+    return path.split('.').reduce((acc, part) => acc && acc[part], obj)
 }
 
 export default Onboarding
