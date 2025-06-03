@@ -22,7 +22,14 @@ import {
 
 function Main() {
   useEffect(()=>{
-    const response = axios.get(`https://guild-to-business.onrender.com`);
+    try{
+      const response = axios.get(`https://guild-to-business.onrender.com`);
+      if (response){
+        console.log(response)
+      }}
+    catch  {
+      console.log("error")
+    }
   })
   const uid =getuid()
   console.log(uid)
