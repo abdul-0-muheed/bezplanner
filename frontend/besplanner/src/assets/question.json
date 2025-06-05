@@ -103,14 +103,14 @@
       "questions": [
         {
           "id": "expected_annual_revenue",
-          "label": "What is your expected annual revenue (in INR)?",
+          "label": "What is your expected annual revenue (in Your Currency)?",
           "type": "number",
           "required": true,
           "jsonPath": "business_info.expected_annual_revenue_inr"
         },
         {
           "id": "expected_annual_expenses",
-          "label": "What are your expected annual expenses (in INR)?",
+          "label": "What are your expected annual expenses (in Your Currency)?",
           "type": "number",
           "required": true,
           "jsonPath": "business_info.expected_annual_expenses_inr"
