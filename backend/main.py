@@ -21,7 +21,7 @@ load_dotenv()
 #sbp_fdb6493e30c875d8b70bf199eb82931eaf6568dd  supabase
 app = FastAPI()
 origins = ["http://localhost:5173",
-           "https://guild-to-business.vercel.app"]  # Add your frontend's origin
+           "https://guild-to-business.vercel.app","https://bezplanner.vercel.app"]  # Add your frontend's origin
 # executor = ThreadPoolExecutor(max_workers=1000)  # Handle concurrent requests
 
 app.add_middleware(
