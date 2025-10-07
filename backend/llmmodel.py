@@ -15,7 +15,7 @@ load_dotenv()
 db = SessionLocal()
 
 #setting the api 
-api_key= os.getenv("api_key")
+api_key= os.getenv("api_key1")
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel(os.getenv("model_name"))
 
